@@ -34,7 +34,7 @@ def prepare_input(filename):
     struct_data_test = {}
 
     try:
-        with open(filename) as json_file:
+        with open(filename, 'r') as json_file:
             data = json.load(json_file, object_pairs_hook=OrderedDict)
     except FileNotFoundError:
         logger.critical(' input.json file missing')

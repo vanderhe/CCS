@@ -29,7 +29,8 @@ logger = logging.getLogger(__name__)
 class Objective:
     '''Objective function for the ccs method.'''
 
-    def __init__(self, l_twb, l_one, sto, energy_ref, force_ref, gen_params, ewald=[], ewald_forces=[]):
+    def __init__(self, l_twb, l_one, sto, energy_ref, force_ref, gen_params,
+                 ewald=[], ewald_forces=[]):
         '''Generates Objective class object.
 
         Args:

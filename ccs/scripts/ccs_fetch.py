@@ -15,6 +15,9 @@ import itertools
 import random
 
 
+random.seed(42)
+
+
 def pair_dist(atoms, R_c, ch1, ch2, counter):
     ''' This function returns pairwise distances between two types of atoms within a certain cuttoff
     Args:
@@ -26,6 +29,10 @@ def pair_dist(atoms, R_c, ch1, ch2, counter):
         A list of distances
     '''
     cell = atoms.get_cell()
+    # quick and dirty workaround for molecules, blame me
+    cell[:,:] = np.array([[1e+100, 0.0, 0.0],
+                          [0.0, 1e+100, 0.0],
+                          [0.0, 0.0, 1e+100]])
     n_repeat = R_c * np.linalg.norm(np.linalg.inv(cell), axis=0)
     n_repeat = np.ceil(n_repeat).astype(int)
 
@@ -36,8 +43,7 @@ def pair_dist(atoms, R_c, ch1, ch2, counter):
     atoms_2 = atoms[mask2]
     Natoms_2 = len(atoms_2)
 
-    offsets = [*itertools.product(*[np.arange(-n, n+1)
-                                  for n in n_repeat])]
+    offsets = [*itertools.product(*[np.arange(-n, n+1) for n in n_repeat])]
 
     pos2 = []
     for offset in offsets:
@@ -62,12 +68,13 @@ def pair_dist(atoms, R_c, ch1, ch2, counter):
     return r_distance, forces
 
 
-def ccs_fetch(mode=None, DFT_DB=None, R_c=6.0, Ns='all', DFTB_DB=None, charge_dict=None):
+def ccs_fetch(mode=None, DFT_DB=None, R_c=6.0, Ns='all', DFTB_DB=None,
+              charge_dict=None):
     """  Function to read files and output structures.json
 
     Args:
         args(list): list of filenames
-        R_c (float, optional): Distance cut-off. Defaults to 7.0.
+        R_c (float, optional): Distance cut-off
     """
     DFT_DB = db.connect(DFT_DB)
 
