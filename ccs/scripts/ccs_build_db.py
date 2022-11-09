@@ -11,19 +11,29 @@ import sys
 from ase.units import Bohr, Hartree
 
 
-def ccs_build_db(mode=None, DFT_DB=None, DFTB_DB=None, file_list=None,
-                 greedy=False, greed_threshold=0.0001):
+def ccs_build_db(
+    mode=None,
+    DFT_DB=None,
+    DFTB_DB=None,
+    file_list=None,
+    greedy=False,
+    greed_threshold=0.0001,
+):
 
     AUtoEvA = Hartree / Bohr
 
     if os.path.isfile(DFT_DB):
-        print("DFT data-base allready exists. Please delete the file or use another file name.")
+        print(
+            "DFT data-base allready exists. Please delete the file or use another file name."
+        )
         exit()
     DFT_DB = db.connect(DFT_DB)
 
     if mode == "DFTB":
         if os.path.isfile(DFTB_DB):
-            print("DFTB data-base allready exists. Please delete the file or use another file name.")
+            print(
+                "DFTB data-base allready exists. Please delete the file or use another file name."
+            )
             exit()
         DFTB_DB = db.connect(DFTB_DB)
 
@@ -41,15 +51,14 @@ def ccs_build_db(mode=None, DFT_DB=None, DFTB_DB=None, file_list=None,
         lns = lns.split()
         DFT_ROOT_FOLDER = lns[0]
 
-        structure_DFT = read(os.path.join(DFT_ROOT_FOLDER, 'output'), index=-1,
-                             format='nwchem-out')
+        structure_DFT = read(
+            os.path.join(DFT_ROOT_FOLDER, "output"), index=-1, format="nwchem-out"
+        )
         DFT_forces = structure_DFT.get_forces()
-        EDFT = float(np.loadtxt(os.path.join(DFT_ROOT_FOLDER,
-                                             'Total_DFT_Energy_eV')))
-        calculator_DFT = SinglePointCalculator(structure_DFT,
-                                               energy=EDFT,
-                                               free_energy=EDFT,
-                                               forces=DFT_forces)
+        EDFT = float(np.loadtxt(os.path.join(DFT_ROOT_FOLDER, "Total_DFT_Energy_eV")))
+        calculator_DFT = SinglePointCalculator(
+            structure_DFT, energy=EDFT, free_energy=EDFT, forces=DFT_forces
+        )
         structure_DFT.calc = calculator_DFT
         structure_DFT.get_potential_energy()
         structure_DFT.get_forces()
@@ -58,14 +67,14 @@ def ccs_build_db(mode=None, DFT_DB=None, DFTB_DB=None, file_list=None,
         if mode == "DFTB":
             DFTB_ROOT_FOLDER = lns[1]
             structure_DFTB = copy.deepcopy(structure_DFT)
-            f2 = open(os.path.join(DFTB_ROOT_FOLDER, 'results.tag'), "r")
+            f2 = open(os.path.join(DFTB_ROOT_FOLDER, "results.tag"), "r")
             time_to_read = False
             cnt = 0
             while True:
                 next_line = f2.readline()
 
                 if time_to_read and cnt < 1:
-                    EDFTB = float(next_line)*Hartree
+                    EDFTB = float(next_line) * Hartree
                     cnt += 1
 
                 if "mermin_energy" in next_line:
@@ -78,16 +87,15 @@ def ccs_build_db(mode=None, DFT_DB=None, DFTB_DB=None, file_list=None,
             # READ DFTB FORCES
             Natoms = structure_DFTB.get_global_number_of_atoms()
             time_to_read = False
-            DFTB_forces = np.zeros(
-                [Natoms, 3])
+            DFTB_forces = np.zeros([Natoms, 3])
             while True:
                 next_line = f2.readline()
 
-                if time_to_read and acnt < Natoms-1:
+                if time_to_read and acnt < Natoms - 1:
                     af = next_line.split()
-                    DFTB_forces[acnt, 0] = float(af[0])*AUtoEvA
-                    DFTB_forces[acnt, 1] = float(af[1])*AUtoEvA
-                    DFTB_forces[acnt, 2] = float(af[2])*AUtoEvA
+                    DFTB_forces[acnt, 0] = float(af[0]) * AUtoEvA
+                    DFTB_forces[acnt, 1] = float(af[1]) * AUtoEvA
+                    DFTB_forces[acnt, 2] = float(af[2]) * AUtoEvA
                     acnt += 1
 
                 if "forces" in next_line:
@@ -98,10 +106,9 @@ def ccs_build_db(mode=None, DFT_DB=None, DFTB_DB=None, file_list=None,
                     break
             f2.close
 
-            calculator_DFTB = SinglePointCalculator(structure_DFTB,
-                                                    energy=EDFTB,
-                                                    free_energy=EDFTB,
-                                                    forces=DFTB_forces)
+            calculator_DFTB = SinglePointCalculator(
+                structure_DFTB, energy=EDFTB, free_energy=EDFTB, forces=DFTB_forces
+            )
 
             structure_DFTB.calc = calculator_DFTB
             structure_DFTB.get_potential_energy()
@@ -112,7 +119,9 @@ def ccs_build_db(mode=None, DFT_DB=None, DFTB_DB=None, file_list=None,
 
 
 def main():
-    print("--------------------------------------------------------------------------------")
+    print(
+        "--------------------------------------------------------------------------------"
+    )
     print("  USAGE:  ccs_build_db MODE [...] ")
     print(" ")
     print("  The following modes and inputs are supported:")
@@ -120,10 +129,12 @@ def main():
     print("      CCS:  file_list(string) DFT.db(string) greedy(bool)")
     print("      DFTB: file_list(string) DFT.db(string) DFTB.db(string)")
     print(" ")
-    print("--------------------------------------------------------------------------------")
+    print(
+        "--------------------------------------------------------------------------------"
+    )
 
     try:
-        assert sys.argv[1] in ['CCS', 'CCS+Q', 'DFTB'], 'Mode not supported.'
+        assert sys.argv[1] in ["CCS", "CCS+Q", "DFTB"], "Mode not supported."
     except:
         exit()
 
@@ -136,16 +147,19 @@ def main():
         print("    DFT data base: ", DFT_data)
         print("    Greedy mode: ", greedy)
         print("")
-        print("--------------------------------------------------------------------------------")
+        print(
+            "--------------------------------------------------------------------------------"
+        )
         ccs_build_db(mode, DFT_DB=DFT_data, file_list=file_list, greedy=greedy)
     if mode == "DFTB":
         DFTB_data = sys.argv[4]
         print("    DFT data base: ", DFT_data)
         print("    DFTB data base: ", DFTB_data)
         print("")
-        print("--------------------------------------------------------------------------------")
-        ccs_build_db(mode, DFT_DB=DFT_data, DFTB_DB=DFTB_data,
-                     file_list=file_list)
+        print(
+            "--------------------------------------------------------------------------------"
+        )
+        ccs_build_db(mode, DFT_DB=DFT_data, DFTB_DB=DFTB_data, file_list=file_list)
 
 
 if __name__ == "__main__":
