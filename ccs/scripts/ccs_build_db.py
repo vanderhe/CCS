@@ -54,14 +54,12 @@ def ccs_build_db(
         structure_DFT = read(
             os.path.join(DFT_ROOT_FOLDER, "output"), index=-1, format="nwchem-out"
         )
-        DFT_forces = structure_DFT.get_forces()
         EDFT = float(np.loadtxt(os.path.join(DFT_ROOT_FOLDER, "Total_DFT_Energy_eV")))
         calculator_DFT = SinglePointCalculator(
-            structure_DFT, energy=EDFT, free_energy=EDFT, forces=DFT_forces
+            structure_DFT, energy=EDFT, free_energy=EDFT
         )
         structure_DFT.calc = calculator_DFT
         structure_DFT.get_potential_energy()
-        structure_DFT.get_forces()
         DFT_DB.write(structure_DFT, PBE=True, key=counter)
 
         if mode == "DFTB":
@@ -84,35 +82,12 @@ def ccs_build_db(
                     break
             f2.close
 
-            # READ DFTB FORCES
-            Natoms = structure_DFTB.get_global_number_of_atoms()
-            time_to_read = False
-            DFTB_forces = np.zeros([Natoms, 3])
-            while True:
-                next_line = f2.readline()
-
-                if time_to_read and acnt < Natoms - 1:
-                    af = next_line.split()
-                    DFTB_forces[acnt, 0] = float(af[0]) * AUtoEvA
-                    DFTB_forces[acnt, 1] = float(af[1]) * AUtoEvA
-                    DFTB_forces[acnt, 2] = float(af[2]) * AUtoEvA
-                    acnt += 1
-
-                if "forces" in next_line:
-                    time_to_read = True
-                    acnt = 0
-
-                if not next_line:
-                    break
-            f2.close
-
             calculator_DFTB = SinglePointCalculator(
-                structure_DFTB, energy=EDFTB, free_energy=EDFTB, forces=DFTB_forces
+                structure_DFTB, energy=EDFTB, free_energy=EDFTB
             )
 
             structure_DFTB.calc = calculator_DFTB
             structure_DFTB.get_potential_energy()
-            structure_DFTB.get_forces()
             DFTB_DB.write(structure_DFTB, DFTB=True, key=counter)
 
     f.close()

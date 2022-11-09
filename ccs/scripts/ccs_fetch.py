@@ -50,19 +50,17 @@ def pair_dist(atoms, R_c, ch1, ch2, counter):
     pos2 = np.array(pos2)
     pos2 = np.reshape(pos2, (-1, 3))
     r_distance = []
-    forces = OrderedDict()
     for p1, id in zip(pos1, index1):
         tmp = pos2 - p1
         norm_dist = np.linalg.norm(tmp, axis=1)
         dist_mask = norm_dist < R_c
         r_distance.extend(norm_dist[dist_mask].tolist())
-        forces["F" + str(counter) + "_" + str(id)] = np.asarray(tmp[dist_mask]).tolist()
 
     if ch1 == ch2:
         r_distance.sort()
         r_distance = r_distance[::2]
 
-    return r_distance, forces
+    return r_distance
 
 
 def ccs_fetch(
@@ -103,13 +101,11 @@ def ccs_fetch(
         if mask[counter]:
             struct = row.toatoms()
             ce = OrderedDict()
-            FREF = row.forces
             EREF = row.energy
             ce["energy_dft"] = EREF
             if mode == "DFTB":
                 key = str(row.key)
                 EDFT = DFT_DB.get("key=" + key).energy
-                FDFT = DFT_DB.get("key=" + key).forces
                 ce["energy_dft"] = EDFT
                 ce["energy_dftb"] = EREF
             dict_species = defaultdict(int)
@@ -133,23 +129,13 @@ def ccs_fetch(
                 ce["ewald"] = ES_energy
 
             cf = OrderedDict()
-            for i in range(len(struct)):
-                cf["F" + str(counter) + "_" + str(i)] = {"force_dft": list(FREF[i, :])}
             ce["atoms"] = dict_species
             for (x, y) in atom_pair:
-                pair_distances, forces = pair_dist(struct, R_c, x, y, counter)
+                pair_distances = pair_dist(struct, R_c, x, y, counter)
                 ce[str(x) + "-" + str(y)] = pair_distances
-                for i in range(len(struct)):
-                    try:
-                        cf["F" + str(counter) + "_" + str(i)][
-                            str(x) + "-" + str(y)
-                        ] = forces["F" + str(counter) + "_" + str(i)]
-                    except:
-                        pass
             d["S" + str(counter + 1)] = ce
     st = OrderedDict()
     st["energies"] = d
-    # st['forces'] = cf
     with open("structures.json", "w") as f:
         json.dump(st, f, indent=8)
 
