@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CSS repulsive potential generation (2-body) &mdash; CCS  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" type="text/css" />
+      <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Changelog" href="changelog.html" />
+    <link rel="prev" title="CCS - Curvature Constrained Splines" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> CCS
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">CSS repulsive potential generation (2-body)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#analysis">Analysis</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="autoapi/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">CCS</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>CSS repulsive potential generation (2-body)</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/gen_ccs.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="css-repulsive-potential-generation-2-body">
+<h1>CSS repulsive potential generation (2-body)<a class="headerlink" href="#css-repulsive-potential-generation-2-body" title="Permalink to this heading"></a></h1>
+<p>Input: DFT_DB.db</p>
+<p>Output: CCS parameters and fit of predicted energies vs. those in the DFT database</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">itertools</span> <span class="k">as</span> <span class="nn">it</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span><span class="p">,</span> <span class="n">defaultdict</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">ase</span> <span class="kn">import</span> <span class="n">Atoms</span>
+<span class="kn">from</span> <span class="nn">ase</span> <span class="kn">import</span> <span class="n">io</span>
+<span class="kn">from</span> <span class="nn">ase.calculators.neighborlist</span> <span class="kn">import</span> <span class="n">NeighborList</span>
+<span class="kn">import</span> <span class="nn">ase.db</span> <span class="k">as</span> <span class="nn">db</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span> 
+<span class="kn">from</span> <span class="nn">ccs.scripts.ccs_fetch</span> <span class="kn">import</span> <span class="n">ccs_fetch</span> <span class="k">as</span> <span class="n">ccs_fetch</span>
+<span class="kn">from</span> <span class="nn">ccs.fitting.main</span> <span class="kn">import</span> <span class="n">twp_fit</span> <span class="k">as</span> <span class="n">ccs_fit</span>
+
+<span class="kn">from</span> <span class="nn">ccs.common.exceptions</span> <span class="kn">import</span> <span class="n">ScriptError</span> 
+<span class="kn">from</span> <span class="nn">ccs.ase_calculator.ccs_ase_calculator</span> <span class="kn">import</span> <span class="n">CCS</span>
+
+<span class="n">base_dir</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+<span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">base_dir</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Base dir is:&#39;</span><span class="p">,</span> <span class="n">base_dir</span><span class="p">)</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/home/runner/.cache/pypoetry/virtualenvs/ccs-oj5MS1KF-py3.9/lib/python3.9/site-packages/ase/calculators/neighborlist.py:5: UserWarning: Moved to ase.neighborlist
+  warnings.warn(&#39;Moved to ase.neighborlist&#39;)
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Base dir is: /home/runner/work/CCS/CCS/docs
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1">#generate data generates trainingset in the format for CCS (structures.json)</span>
+<span class="n">cwd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">cwd</span><span class="o">+</span><span class="s2">&quot;/CCS/&quot;</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">cwd</span><span class="o">+</span><span class="s2">&quot;/CCS/&quot;</span><span class="p">)</span>
+<span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">cwd</span><span class="o">+</span><span class="s2">&quot;/CCS/&quot;</span><span class="p">)</span>
+
+<span class="c1">### Cleaning up old files</span>
+
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="s1">&#39;CCS_DB.db&#39;</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;CCS_DB.db&#39;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="s1">&#39;ccs.spl&#39;</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s1">&#39;ccs.spl&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1">#generate data generates trainingset in the format for CCS (structures.json)</span>
+
+<span class="n">ccs_fetch</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;CCS&#39;</span><span class="p">,</span> <span class="n">R_c</span><span class="o">=</span><span class="mf">6.0</span><span class="p">,</span> <span class="n">Ns</span><span class="o">=</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="n">DFT_DB</span><span class="o">=</span><span class="s1">&#39;../DFT_DB.db&#39;</span><span class="p">,</span> <span class="n">DFTB_DB</span><span class="o">=</span><span class="s1">&#39;../DFT_DB.db&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>  0%|          | 0/999 [00:00&lt;?, ?it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>  2%|▏         | 17/999 [00:00&lt;00:05, 165.88it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>  5%|▍         | 47/999 [00:00&lt;00:03, 241.28it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>  8%|▊         | 77/999 [00:00&lt;00:03, 265.20it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 11%|█         | 107/999 [00:00&lt;00:03, 277.11it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 14%|█▎        | 137/999 [00:00&lt;00:03, 282.78it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 17%|█▋        | 167/999 [00:00&lt;00:02, 287.24it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 20%|█▉        | 197/999 [00:00&lt;00:02, 290.10it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 23%|██▎       | 227/999 [00:00&lt;00:02, 292.54it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 26%|██▌       | 257/999 [00:00&lt;00:02, 293.73it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 29%|██▊       | 287/999 [00:01&lt;00:02, 294.55it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 32%|███▏      | 317/999 [00:01&lt;00:02, 294.52it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 35%|███▍      | 347/999 [00:01&lt;00:02, 295.51it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 38%|███▊      | 377/999 [00:01&lt;00:02, 296.28it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 41%|████      | 407/999 [00:01&lt;00:01, 297.22it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 44%|████▎     | 437/999 [00:01&lt;00:01, 297.01it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 47%|████▋     | 467/999 [00:01&lt;00:01, 297.65it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 50%|████▉     | 497/999 [00:01&lt;00:01, 286.22it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 53%|█████▎    | 526/999 [00:01&lt;00:01, 252.40it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 55%|█████▌    | 552/999 [00:02&lt;00:01, 233.46it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 58%|█████▊    | 577/999 [00:02&lt;00:01, 221.29it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 60%|██████    | 600/999 [00:02&lt;00:01, 210.89it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 62%|██████▏   | 622/999 [00:02&lt;00:01, 203.77it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 64%|██████▍   | 643/999 [00:02&lt;00:01, 198.89it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 66%|██████▋   | 664/999 [00:02&lt;00:01, 195.41it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 68%|██████▊   | 684/999 [00:02&lt;00:01, 193.49it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 71%|███████   | 711/999 [00:02&lt;00:01, 212.39it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 74%|███████▍  | 740/999 [00:02&lt;00:01, 232.22it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 77%|███████▋  | 768/999 [00:03&lt;00:00, 245.31it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 80%|███████▉  | 797/999 [00:03&lt;00:00, 256.46it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 83%|████████▎ | 826/999 [00:03&lt;00:00, 263.83it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 85%|████████▌ | 854/999 [00:03&lt;00:00, 267.44it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 88%|████████▊ | 881/999 [00:03&lt;00:00, 260.93it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 91%|█████████ | 908/999 [00:03&lt;00:00, 231.93it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 93%|█████████▎| 932/999 [00:03&lt;00:00, 213.56it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 95%|█████████▌| 954/999 [00:03&lt;00:00, 201.90it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span> 98%|█████████▊| 975/999 [00:03&lt;00:00, 195.70it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>100%|█████████▉| 995/999 [00:04&lt;00:00, 191.88it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>100%|██████████| 999/999 [00:04&lt;00:00, 243.70it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1">#DEFINE INPUT</span>
+
+<span class="nb">input</span><span class="o">=</span><span class="p">{</span>
+    <span class="s2">&quot;General&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;interface&quot;</span><span class="p">:</span> <span class="s2">&quot;CCS&quot;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;Twobody&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;Xx-Xx&quot;</span><span class="p">:</span> <span class="p">{</span>
+                        <span class="s2">&quot;Rcut&quot;</span><span class="p">:</span> <span class="mf">6.0</span><span class="p">,</span>
+                        <span class="s2">&quot;Resolution&quot;</span><span class="p">:</span> <span class="mf">0.05</span><span class="p">,</span>
+                        <span class="s2">&quot;Swtype&quot;</span><span class="p">:</span> <span class="s2">&quot;rep&quot;</span>
+                <span class="p">}</span>
+        <span class="p">}</span>
+<span class="p">}</span>
+<span class="c1">#SAVE TO FILE</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;input.json&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+    
+<span class="c1">#RUN FIT</span>
+<span class="n">ccs_fit</span><span class="p">(</span><span class="s2">&quot;input.json&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Generating one-body information from training-set.
+    Added elements:  Li C O H
+Generating two-body potentials from one-body information.
+    Adding pair: Li-Li
+    Adding pair: Li-O
+    Adding pair: C-Li
+    Did not add pair: C-Li
+    Adding pair: C-C
+    Did not add pair: C-C
+    Adding pair: C-O
+    Did not add pair: C-O
+    Adding pair: C-H
+    Did not add pair: C-H
+    Adding pair: O-O
+    Did not add pair: O-O
+    Adding pair: H-Li
+    Did not add pair: H-Li
+    Adding pair: H-O
+    Did not add pair: H-O
+    Adding pair: H-H
+    Did not add pair: H-H
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Finding optimum switch:   0%|          | 0/1 [00:00&lt;?, ?it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Finding optimum switch: 100%|██████████| 1/1 [00:00&lt;00:00, 27.71it/s]
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
+</div>
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">IndexError</span><span class="g g-Whitespace">                                </span>Traceback (most recent call last)
+<span class="n">Cell</span> <span class="n">In</span> <span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">line</span> <span class="mi">20</span>
+<span class="g g-Whitespace">     </span><span class="mi">17</span>     <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="g g-Whitespace">     </span><span class="mi">19</span> <span class="c1">#RUN FIT</span>
+<span class="ne">---&gt; </span><span class="mi">20</span> <span class="n">ccs_fit</span><span class="p">(</span><span class="s2">&quot;input.json&quot;</span><span class="p">)</span>
+
+<span class="nn">File ~/work/CCS/CCS/src/ccs/fitting/main.py:361,</span> in <span class="ni">twp_fit</span><span class="nt">(filename)</span>
+<span class="g g-Whitespace">    </span><span class="mi">349</span> <span class="n">nn</span> <span class="o">=</span> <span class="n">Objective</span><span class="p">(</span>
+<span class="g g-Whitespace">    </span><span class="mi">350</span>     <span class="n">atom_pairs</span><span class="p">,</span>
+<span class="g g-Whitespace">    </span><span class="mi">351</span>     <span class="n">atom_onebodies</span><span class="p">,</span>
+   <span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">357</span>     <span class="n">ewald_forces</span><span class="o">=</span><span class="n">ewald_forces</span><span class="p">,</span>
+<span class="g g-Whitespace">    </span><span class="mi">358</span> <span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">360</span> <span class="c1"># Solve QP problem</span>
+<span class="ne">--&gt; </span><span class="mi">361</span> <span class="n">predicted_energies</span><span class="p">,</span> <span class="n">mse</span><span class="p">,</span> <span class="n">xx_unfolded</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">solution</span><span class="p">()</span>
+
+<span class="nn">File ~/work/CCS/CCS/src/ccs/fitting/objective.py:171,</span> in <span class="ni">Objective.solution</span><span class="nt">(self)</span>
+<span class="g g-Whitespace">    </span><span class="mi">169</span> <span class="k">for</span> <span class="n">ii</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">np</span><span class="p">):</span>
+<span class="g g-Whitespace">    </span><span class="mi">170</span>     <span class="bp">self</span><span class="o">.</span><span class="n">l_twb</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span><span class="o">.</span><span class="n">get_spline_coeffs</span><span class="p">()</span>
+<span class="ne">--&gt; </span><span class="mi">171</span>     <span class="bp">self</span><span class="o">.</span><span class="n">l_twb</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span><span class="o">.</span><span class="n">get_expcoeffs</span><span class="p">()</span>
+<span class="g g-Whitespace">    </span><span class="mi">172</span>     <span class="n">x_unfolded</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span>
+<span class="g g-Whitespace">    </span><span class="mi">173</span>         <span class="p">(</span><span class="n">x_unfolded</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">l_twb</span><span class="p">[</span><span class="n">ii</span><span class="p">]</span><span class="o">.</span><span class="n">curvatures</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span>
+<span class="g g-Whitespace">    </span><span class="mi">174</span>     <span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">175</span> <span class="k">for</span> <span class="n">onb</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">l_one</span><span class="p">:</span>
+
+<span class="nn">File ~/work/CCS/CCS/src/ccs/fitting/spline_functions.py:344,</span> in <span class="ni">Twobody.get_expcoeffs</span><span class="nt">(self)</span>
+<span class="g g-Whitespace">    </span><span class="mi">321</span> <span class="sd">&quot;&quot;&quot;Calculates coefficients of exponential function.</span>
+<span class="g g-Whitespace">    </span><span class="mi">322</span><span class="sd"> </span>
+<span class="g g-Whitespace">    </span><span class="mi">323</span><span class="sd"> Args:</span>
+<span class="sd">   (...)</span>
+<span class="g g-Whitespace">    </span><span class="mi">335</span><span class="sd"> </span>
+<span class="g g-Whitespace">    </span><span class="mi">336</span><span class="sd"> &quot;&quot;&quot;</span>
+<span class="g g-Whitespace">    </span><span class="mi">337</span> <span class="c1"># NOTE WE SHOULD NOTE INCLUDE INNERMOST POINT WHICH IS IL-DEFINED!</span>
+<span class="g g-Whitespace">    </span><span class="mi">338</span> <span class="c1"># OLD CODE</span>
+<span class="g g-Whitespace">    </span><span class="mi">339</span> <span class="c1"># aa = self.splcoeffs[0, 0]</span>
+   <span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="g g-Whitespace">    </span><span class="mi">342</span> <span class="c1"># r0 = self.rn[0]</span>
+<span class="g g-Whitespace">    </span><span class="mi">343</span> <span class="c1"># NEW CODE</span>
+<span class="ne">--&gt; </span><span class="mi">344</span> <span class="n">aa</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">splcoeffs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+<span class="g g-Whitespace">    </span><span class="mi">345</span> <span class="n">bb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">splcoeffs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="g g-Whitespace">    </span><span class="mi">346</span> <span class="n">cc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">splcoeffs</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span>
+
+<span class="ne">IndexError</span>: index 1 is out of bounds for axis 0 with size 1
+</pre></div>
+</div>
+</div>
+</div>
+<section id="analysis">
+<h2>Analysis<a class="headerlink" href="#analysis" title="Permalink to this heading"></a></h2>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">struct</span><span class="o">=</span><span class="n">db</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;../DFT_DB.db&quot;</span><span class="p">)</span>
+<span class="n">db_ccs</span><span class="o">=</span><span class="n">db</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;CCS_DB.db&quot;</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;CCS_params.json&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">CCS_params</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">struct</span><span class="o">.</span><span class="n">select</span><span class="p">(),</span> <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">struct</span><span class="p">)):</span>  
+    <span class="n">structure</span><span class="o">=</span><span class="n">row</span><span class="o">.</span><span class="n">toatoms</span><span class="p">()</span>
+    <span class="n">structure</span><span class="o">.</span><span class="n">calc</span><span class="o">=</span><span class="n">CCS</span><span class="p">(</span><span class="n">CCS_params</span><span class="o">=</span><span class="n">CCS_params</span><span class="p">)</span>
+    <span class="n">structure</span><span class="o">.</span><span class="n">get_potential_energy</span><span class="p">()</span>
+    <span class="n">structure</span><span class="o">.</span><span class="n">get_forces</span><span class="p">()</span>
+    <span class="n">db_ccs</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">structure</span><span class="p">,</span><span class="n">key</span><span class="o">=</span><span class="n">row</span><span class="o">.</span><span class="n">key</span><span class="p">,</span><span class="n">CCS</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>100%|█| 999/999 [00:1
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1">#Read Data</span>
+
+<span class="n">dbname_DFT</span><span class="o">=</span><span class="s1">&#39;../DFT_DB.db&#39;</span>
+<span class="n">dbname_CCS</span><span class="o">=</span><span class="s1">&#39;CCS_DB.db&#39;</span>
+<span class="n">db_ccs</span><span class="o">=</span><span class="n">db</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">dbname_CCS</span><span class="p">)</span>
+<span class="n">db_dft</span><span class="o">=</span><span class="n">db</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">dbname_DFT</span><span class="p">)</span>
+<span class="n">epred</span><span class="o">=</span><span class="p">[];</span><span class="n">edft</span><span class="o">=</span><span class="p">[];</span> <span class="n">eccs</span><span class="o">=</span><span class="p">[];</span>
+<span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">db_dft</span><span class="o">.</span><span class="n">select</span><span class="p">(),</span> <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">db_dft</span><span class="p">)):</span>
+    <span class="n">structure</span><span class="o">=</span><span class="n">row</span><span class="o">.</span><span class="n">toatoms</span><span class="p">()</span>
+    <span class="n">natoms</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">structure</span><span class="o">.</span><span class="n">get_atomic_numbers</span><span class="p">())</span>
+    <span class="nb">id</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">key</span><span class="p">)</span>
+    <span class="n">eccs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">db_ccs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;key=&#39;</span><span class="o">+</span><span class="nb">id</span><span class="p">)</span><span class="o">.</span><span class="n">energy</span><span class="o">/</span><span class="n">natoms</span><span class="p">)</span>
+    <span class="n">edft</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">db_dft</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;key=&#39;</span><span class="o">+</span><span class="nb">id</span><span class="p">)</span><span class="o">.</span><span class="n">energy</span><span class="o">/</span><span class="n">natoms</span><span class="p">)</span> 
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>100%|█| 999/999 [00:0
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1">#plot Energies</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span> <span class="o">=</span> <span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">edft</span><span class="p">,</span> <span class="n">eccs</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">edft</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">edft</span><span class="p">)],</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">edft</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">edft</span><span class="p">)],</span> <span class="s1">&#39;k-&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.5</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFTB+CCS&quot;</span><span class="p">],</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">30</span> <span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;E$_</span><span class="si">{DFT}</span><span class="s1">$/atom (eV)&#39;</span><span class="p">,</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;E$_{DFTB+CCS}$&#39;</span><span class="p">,</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">edft</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">edft</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">edft</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">edft</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s1">&#39;DFTvsDFTB+CCS.png&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="_images/dab2c9ac2d8df2178efab2e34722d6ce2be14a2960bf6340c558e78c9b8faf4d.png" src="_images/dab2c9ac2d8df2178efab2e34722d6ce2be14a2960bf6340c558e78c9b8faf4d.png" />
+</div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="CCS - Curvature Constrained Splines" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="changelog.html" class="btn btn-neutral float-right" title="Changelog" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Jolla Kullgren.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
