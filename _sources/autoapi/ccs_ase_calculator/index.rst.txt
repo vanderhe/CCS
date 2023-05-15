@@ -26,19 +26,6 @@ Functions
 
 
 
-Attributes
-~~~~~~~~~~
-
-.. autoapisummary::
-
-   ccs_ase_calculator.logg
-
-
-.. py:data:: logg
-   
-
-   
-
 .. py:class:: spline_table(elem1, elem2, CCS_params, exp=True)
 
    .. py:method:: eval_energy(r)
@@ -60,17 +47,7 @@ Attributes
    Curvature constrained splines calculator compatible with the ASE
    format.
 
-   :param input_file: To be added, Jolla.
-   :type input_file: XXX
-
-   :rtype: What does it return actually, Jolla?
-
-   .. rubric:: Examples
-
-   >>> To be added, Jolla.
-
    .. py:attribute:: implemented_properties
-      
 
       
 
